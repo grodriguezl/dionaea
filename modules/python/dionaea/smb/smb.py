@@ -372,6 +372,12 @@ class smbd(connection):
             # support for CVE-2017-7494 Samba SMB RCE
             elif h.Path[-6:] == b'share\0':
                 smblog.info('Possible CVE-2017-7494 Samba SMB RCE attempts..')
+
+                i = incident("dionaea.modules.python.smb.attack")
+                i.con = self
+                i.msg = "CVE-2017-7494 attemp"
+                i.report()
+
                 r.AndXOffset = 0
                 r.Service = "A:\0"
                 r.NativeFileSystem = "NTFS\0"
@@ -621,6 +627,12 @@ class smbd(connection):
                     SetupCount = h.SetupCount
                     if SetupCount > 0:
                         smblog.info('MS17-010 - SMB RCE exploit scanning..')
+
+                        i = incident("dionaea.modules.python.smb.attack")
+                        i.con = self
+                        i.msg = "MS17-010 scanning attemp"
+                        i.report()
+
                         r = SMB_Trans_Response_Simple()
                         # returned #STATUS_INSUFF_SERVER_RESOURCE as we not being patched
                         rstatus = 0xc0000205  # STATUS_INSUFF_SERVER_RESOURCES
@@ -630,6 +642,7 @@ class smbd(connection):
             h = p.getlayer(SMB_Trans2_Request)
             if h.Setup[0] == SMB_TRANS2_SESSION_SETUP:
                 smblog.info('Possible DoublePulsar connection attempts..')
+
                 # determine DoublePulsar opcode and command
                 # https://zerosum0x0.blogspot.sg/2017/04/doublepulsar-initial-smb-backdoor-ring.html
                 # The opcode list is as follows:
@@ -642,6 +655,12 @@ class smbd(connection):
                 for fid,command in oplist:
                     if op2 == fid:
                         smblog.info("DoublePulsar request opcode: %s command: %s" % (op2, command))
+
+                        i = incident("dionaea.modules.python.smb.attack")
+                        i.con = self
+                        i.msg = "DoublePulsar detected"
+                        i.report()
+
                 if op2 != '23' and op2 != 'c8' and op2 != '77':
                     smblog.info("unknown opcode: %s" % op2)
 
@@ -674,6 +693,11 @@ class smbd(connection):
 
                     # save the captured payload/gift/evil/buddy to disk
                     smblog.info('DoublePulsar payload - Save to disk')
+
+                    i = incident("dionaea.modules.python.smb.attack")
+                    i.con = self
+                    i.msg = "DoublePulsar payload delivered"
+                    i.report()
 
                     dionaea_config = g_dionaea.config().get("dionaea")
                     download_dir = dionaea_config.get("download.dir")
