@@ -5,23 +5,23 @@
 #*
 #*
 #* Copyright (C) 2010  Mark Schloesser
-#* 
+#*
 #* This program is free software; you can redistribute it and/or
 #* modify it under the terms of the GNU General Public License
 #* as published by the Free Software Foundation; either version 2
 #* of the License, or (at your option) any later version.
-#* 
+#*
 #* This program is distributed in the hope that it will be useful,
 #* but WITHOUT ANY WARRANTY; without even the implied warranty of
 #* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #* GNU General Public License for more details.
-#* 
+#*
 #* You should have received a copy of the GNU General Public License
 #* along with this program; if not, write to the Free Software
 #* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#* 
-#* 
-#*             contact nepenthesdev@gmail.com  
+#*
+#*
+#*             contact nepenthesdev@gmail.com
 #*
 #*******************************************************************************/
 
@@ -324,7 +324,7 @@ class hpfeedihandler(ihandler):
         # self.client.close()
         pass
 
-    def connection_publish(self, icd, con_type):
+    def connection_publish(self, icd, con_type, **kwargs):
         try:
             con=icd.con
             self.client.publish(
@@ -336,13 +336,36 @@ class hpfeedihandler(ihandler):
                 remote_port=con.remote.port,
                 remote_hostname=con.remote.hostname,
                 local_host=self._ownip(icd),
-                local_port=con.local.port
+                local_port=con.local.port,
+                **kwargs
             )
         except Exception as e:
             logger.warn('exception when publishing: {0}'.format(e))
 
     def handle_incident(self, i):
         pass
+
+    def handle_incident_dionaea_modules_python_ftp_login(self, icd):
+        self.connection_publish(icd, 'login', username=icd.username, password=icd.password)
+        con=icd.con
+        logger.info("FTP login %s:%i from %s:%i user: %s pass: %s" %
+            (con.remote.host, con.remote.port, self._ownip(icd), con.local.port,icd.username,icd.password))
+
+    def handle_incident_dionaea_modules_python_ftp_command(self, icd):
+        if icd.get("command").decode() in ['STOR','RETR']:
+            self.connection_publish(icd, 'command',command=icd.command.decode(),
+                                    arguments=[a for a in icd.arguments])
+            con=icd.con
+            logger.info("FTP command %s:%i from %s:%i cmd:%s args:%s" %
+                        (con.remote.host, con.remote.port,
+                        self._ownip(icd), con.local.port,icd.command.decode(),
+                        ",".join(icd.arguments)))
+
+    def handle_incident_dionaea_modules_python_smb_attack(self, icd):
+        self.connection_publish(icd, 'attack', attack=icd.msg)
+        con=icd.con
+        logger.info("SMB %s from %s:%i to %s:%i"  %
+            (icd.msg, con.remote.host, con.remote.port, self._ownip(icd), con.local.port))
 
     def handle_incident_dionaea_connection_tcp_listen(self, icd):
         self.connection_publish(icd, 'listen')
